@@ -1,44 +1,39 @@
-# IPC via Shared Memory (C++ / Windows API)
+# IPC via Shared Memory (C++ / POSIX API)
 
 Two separate processes — a writer and a reader — communicate 
-through a shared memory segment using the Windows API 
-(CreateFileMapping, MapViewOfFile).
+through a shared memory segment using the POSIX shared memory API 
+(shm_open, ftruncate, mmap).
 
 ## What it does
-`writer.cpp` creates a named shared memory mapping and writes a 
-user-provided message into it. `reader.cpp` opens the same shared 
-memory mapping (by name) and reads the message back out. The two 
-programs run as separate processes but share data without using 
-sockets, pipes, or files on disk.
+`writer.cpp` creates and provisions a named shared memory segment in the Linux kernel and writes a user-provided message into it. `reader.cpp` opens the same shared memory segment (by name) and reads the message back out. The two programs run as separate processes but share data without using sockets, pipes, or physical files on disk.
 
 ## Concepts demonstrated
 - Inter-process communication (IPC)
-- Shared memory mapping (CreateFileMapping, MapViewOfFile)
-- Cross-process data sharing on Windows
-- Low-level Win32 API usage in C++
+- POSIX Shared memory mapping (`shm_open`, `ftruncate`, `mmap`)
+- Cross-process data sharing on Linux systems
+- Low-level UNIX system calls in C++
 
 ## How to build and run
-\`\`\`
-g++ writer.cpp -o writer.exe
-g++ reader.cpp -o reader.exe
-\`\`\`
+POSIX shared memory requires linking against the real-time system library (`-lrt`) on Linux:
+
+```bash
+g++ writer.cpp -o writer -lrt
+g++ reader.cpp -o reader -lrt
+```
 
 Run in two separate terminal windows (both processes need to be 
 running to share memory):
 
-1. In terminal 1: \`.\writer.exe\` — enter a message when prompted, 
+1. In terminal 1: `./writer` — enter a message when prompted, 
    then keep the window open (press Enter to exit once done testing)
-2. In terminal 2: \`.\reader.exe\` — reads back the message written 
+2. In terminal 2: `./reader` — reads back the message written 
    by the writer
 
 ## Why I built this
-Reinforcing IPC concepts used in prior embedded systems work 
-(device-scanning modules with IPC-based communication), adapted 
-here to the Windows API since this environment doesn't support 
-POSIX shared memory (sys/shm.h).
+Reinforcing IPC concepts used in prior embedded systems work (device-scanning modules with IPC-based communication), using standard cross-platform POSIX methodologies native to modern UNIX and embedded Linux deployments.
 
 ## Notes
-This uses the Windows-specific shared memory API rather than the 
-POSIX System V IPC calls (shmget/shmat) used on Linux/Mac, since 
-the underlying concept — processes sharing a memory segment — is 
-the same regardless of OS-specific API.
+- This uses the POSIX shared memory API (`shm_open`) rather than the older System V IPC calls (`shmget`/`shmat`) or Windows-specific abstractions (`CreateFileMapping`).
+- On Linux, shared memory segments are virtual files backed by the kernel, located under the `/dev/shm/` directory. 
+- Names of POSIX shared memory blocks must strictly begin with a leading forward slash (e.g., `/MySharedMemory`).
+- Unlike Windows, which reclaims shared allocations automatically when processes exit, Linux memory blocks persist in the kernel until explicitly destroyed via `shm_unlink`.
